@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { BedrockAgentCoreClient, InvokeAgentRuntimeCommand } from '@aws-sdk/client-bedrock-agentcore'
+import { useCognitoAuth } from '../lib/amplify'
 
 interface Message {
   id: string
@@ -16,6 +17,7 @@ interface Conversation {
 }
 
 export default function ChatApp() {
+  const { getCredentials } = useCognitoAuth()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [currentConversation, setCurrentConversation] = useState<string | null>(null)
   const [message, setMessage] = useState('')
@@ -101,10 +103,7 @@ export default function ChatApp() {
     try {
       const client = new BedrockAgentCoreClient({
         region: process.env.NEXT_PUBLIC_AWS_REGION || 'us-east-1',
-        credentials: {
-          accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID || '',
-          secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY || ''
-        }
+        credentials: getCredentials()
       })
       
       const input = {

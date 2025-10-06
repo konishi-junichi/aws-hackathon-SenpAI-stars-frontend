@@ -1,7 +1,7 @@
 'use client'
 
-import ChatApp from '@/components/ChatApp'
+import AuthWrapper from '@/components/AuthWrapper'
 
 export default function Home() {
-  return <ChatApp />
+  return <AuthWrapper />
 }
