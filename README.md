@@ -47,6 +47,14 @@ AWSのCloudFrontおよびS3の構成で静的Webサイトをホスティング�
 
 ## セットアップ・使用方法
 
+### AWS設定
+1. `.env.local.example`を`.env.local`にコピー
+2. AWS認証情報を設定:
+```bash
+cp .env.local.example .env.local
+# .env.localファイルを編集してAWS認証情報を入力
+```
+
 ### 開発環境
 #### 通常の方法
 ```bash

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { BedrockAgentCoreClient, InvokeAgentRuntimeCommand } from '@aws-sdk/client-bedrock-agentcore'
 
 interface Message {
   id: string
@@ -96,11 +97,30 @@ export default function ChatApp() {
 
     setMessage('')
 
-    // Simulate AI response
-    setTimeout(() => {
+    // Get AI response from Bedrock Agent
+    try {
+      const client = new BedrockAgentCoreClient({
+        region: process.env.NEXT_PUBLIC_AWS_REGION || 'us-east-1',
+        credentials: {
+          accessKeyId: process.env.NEXT_PUBLIC_AWS_ACCESS_KEY_ID || '',
+          secretAccessKey: process.env.NEXT_PUBLIC_AWS_SECRET_ACCESS_KEY || ''
+        }
+      })
+      
+      const input = {
+        runtimeSessionId: `session-${conversationId}-${Date.now()}`,
+        agentRuntimeArn: process.env.NEXT_PUBLIC_BEDROCK_AGENT_ARN || '',
+        qualifier: 'DEFAULT',
+        payload: new TextEncoder().encode(JSON.stringify({ prompt: message }))
+      }
+
+      const command = new InvokeAgentRuntimeCommand(input)
+      const response = await client.send(command)
+      const textResponse = await response.response?.transformToString() || 'すみません、応答を取得できませんでした。'
+
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
-        text: 'こんにちは！どのようなお手伝いができますか？',
+        text: textResponse,
         sender: 'ai',
         timestamp: new Date()
       }
@@ -110,7 +130,21 @@ export default function ChatApp() {
           ? { ...conv, messages: [...conv.messages, aiMessage], lastMessage: new Date() }
           : conv
       ))
-    }, 1000)
+    } catch (error) {
+      console.error('AI応答エラー:', error)
+      const errorMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: 'すみません、AIからの応答を取得できませんでした。もう一度お試しください。',
+        sender: 'ai',
+        timestamp: new Date()
+      }
+
+      setConversations(prev => prev.map(conv => 
+        conv.id === conversationId 
+          ? { ...conv, messages: [...conv.messages, errorMessage], lastMessage: new Date() }
+          : conv
+      ))
+    }
   }
 
   const startEditingTitle = (conversationId: string, currentTitle: string) => {
