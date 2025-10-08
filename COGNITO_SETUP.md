@@ -56,7 +56,8 @@ IDプール作成時に自動作成されるIAMロールに以下のポリシー
 `.env.local`ファイルに以下を設定:
 
 ```
-NEXT_PUBLIC_AWS_REGION=us-east-1
+NEXT_PUBLIC_AWS_REGION=ap-northeast-1
+NEXT_PUBLIC_AWS_BEDROCK_REGION=us-west-2
 NEXT_PUBLIC_BEDROCK_AGENT_ARN=your_bedrock_agent_arn
 NEXT_PUBLIC_COGNITO_USER_POOL_ID=your_user_pool_id
 NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID=your_app_client_id

@@ -102,7 +102,7 @@ export default function ChatApp() {
     // Get AI response from Bedrock Agent
     try {
       const client = new BedrockAgentCoreClient({
-        region: process.env.NEXT_PUBLIC_AWS_REGION || 'us-east-1',
+        region: process.env.NEXT_PUBLIC_AWS_BEDROCK_REGION || 'us-east-1',
         credentials: getCredentials()
       })
       
