@@ -3,6 +3,7 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Brain } from "lucide-react";
+import { useCognitoAuth } from "../lib/amplify";
 
 interface LoginScreenProps {
   onLogin: () => void;
@@ -11,10 +12,23 @@ interface LoginScreenProps {
 export function LoginScreen({ onLogin }: LoginScreenProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const { signIn } = useCognitoAuth();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onLogin();
+    setLoading(true);
+    setError("");
+    
+    try {
+      await signIn(email, password);
+      onLogin();
+    } catch (err: any) {
+      setError(err.message || "ログインに失敗しました");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -30,6 +44,12 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="p-3 text-sm text-red-600 bg-red-50 rounded-xl">
+                {error}
+              </div>
+            )}
+            
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -39,6 +59,7 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="rounded-xl"
+                disabled={loading}
                 required
               />
             </div>
@@ -52,12 +73,17 @@ export function LoginScreen({ onLogin }: LoginScreenProps) {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="rounded-xl"
+                disabled={loading}
                 required
               />
             </div>
 
-            <Button type="submit" className="w-full rounded-xl bg-[#0073bb] hover:bg-[#005a94]">
-              Login
+            <Button 
+              type="submit" 
+              className="w-full rounded-xl bg-[#0073bb] hover:bg-[#005a94]"
+              disabled={loading}
+            >
+              {loading ? "ログイン中..." : "Login"}
             </Button>
           </form>
 

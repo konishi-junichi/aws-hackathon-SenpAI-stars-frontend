@@ -5,6 +5,7 @@ import { Textarea } from "./ui/textarea";
 import { ArrowLeft, Heart, BookOpen, CheckSquare } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { Checkbox } from "./ui/checkbox";
+import { useBedrockAgent } from "../lib/bedrock-agent";
 
 interface CounselingMentorProps {
   onBack: () => void;
@@ -44,22 +45,29 @@ export function CounselingMentor({ onBack }: CounselingMentorProps) {
     { id: 2, text: "Write down 3 things you're grateful for", completed: false },
     { id: 3, text: "Share your feelings with a trusted friend", completed: false },
   ]);
+  const [loading, setLoading] = useState(false);
+  const { sendMessage } = useBedrockAgent();
 
-  const handleSend = () => {
-    if (!userMessage.trim()) return;
+  const handleSend = async () => {
+    if (!userMessage.trim() || loading) return;
 
-    const newConversation = [
-      ...conversation,
-      { role: "user" as const, message: userMessage, emotion: selectedEmotion || undefined },
-      {
-        role: "ai" as const,
-        message: "I hear you, and it's completely valid to feel this way. Remember, every challenge is an opportunity for growth. You've overcome difficulties before, and you have the strength to navigate through this too. 🌸"
-      }
-    ];
-
-    setConversation(newConversation);
+    const message = userMessage;
+    const emotion = selectedEmotion;
     setUserMessage("");
     setSelectedEmotion(null);
+    setLoading(true);
+    
+    setConversation(prev => [...prev, { role: "user", message, emotion: emotion || undefined }]);
+    
+    try {
+      const contextMessage = `Emotion: ${emotion || 'neutral'}. Message: ${message}`;
+      const response = await sendMessage(contextMessage, 'counseling-session');
+      setConversation(prev => [...prev, { role: "ai", message: response }]);
+    } catch (error) {
+      setConversation(prev => [...prev, { role: "ai", message: "I'm here for you. Sometimes technology has hiccups, but my support for you remains constant. Please try sharing again." }]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const toggleActionItem = (id: number) => {
@@ -114,6 +122,17 @@ export function CounselingMentor({ onBack }: CounselingMentorProps) {
                     </div>
                   </div>
                 ))}
+                {loading && (
+                  <div className="flex justify-start">
+                    <div className="bg-pink-50 border border-pink-200 p-4 rounded-2xl">
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-pink-400 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-pink-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                        <div className="w-2 h-2 bg-pink-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Emotion Selector */}
@@ -142,15 +161,22 @@ export function CounselingMentor({ onBack }: CounselingMentorProps) {
                 <Textarea
                   value={userMessage}
                   onChange={(e) => setUserMessage(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
                   placeholder="Share what's on your mind..."
                   className="rounded-xl resize-none"
                   rows={3}
                 />
                 <Button
                   onClick={handleSend}
+                  disabled={loading}
                   className="rounded-xl bg-[#ec4899] hover:bg-[#db2777]"
                 >
-                  <Heart className="w-5 h-5" />
+                  {loading ? "..." : <Heart className="w-5 h-5" />}
                 </Button>
               </div>
             </Card>

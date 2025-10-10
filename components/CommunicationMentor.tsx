@@ -4,6 +4,7 @@ import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
 import { ArrowLeft, MessageSquare, Lightbulb } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { useBedrockAgent } from "../lib/bedrock-agent";
 
 interface CommunicationMentorProps {
   onBack: () => void;
@@ -25,19 +26,27 @@ export function CommunicationMentor({ onBack }: CommunicationMentorProps) {
     }
   ]);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { sendMessage } = useBedrockAgent();
 
-  const handleSend = () => {
-    if (!userInput.trim()) return;
+  const handleSend = async () => {
+    if (!userInput.trim() || loading) return;
 
-    setConversation([
-      ...conversation,
-      { role: "user", message: userInput },
-      {
-        role: "ai",
-        message: "Great! Let me help you structure this using the Pyramid Structure. Start with your main conclusion first - what's the key message you want to convey?"
-      }
-    ]);
+    const userMessage = userInput;
     setUserInput("");
+    setLoading(true);
+    
+    setConversation(prev => [...prev, { role: "user", message: userMessage }]);
+    
+    try {
+      const contextMessage = `Role: ${role}. Communication context: ${userMessage}`;
+      const response = await sendMessage(contextMessage, 'communication-session');
+      setConversation(prev => [...prev, { role: "ai", message: response }]);
+    } catch (error) {
+      setConversation(prev => [...prev, { role: "ai", message: "Sorry, I'm having trouble connecting right now. Please try again." }]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleShowFeedback = () => {
@@ -114,6 +123,17 @@ export function CommunicationMentor({ onBack }: CommunicationMentorProps) {
                     </div>
                   </div>
                 ))}
+                {loading && (
+                  <div className="flex justify-start">
+                    <div className="bg-muted p-4 rounded-2xl">
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce"></div>
+                        <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+                        <div className="w-2 h-2 bg-gray-500 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Input */}
@@ -121,15 +141,22 @@ export function CommunicationMentor({ onBack }: CommunicationMentorProps) {
                 <Textarea
                   value={userInput}
                   onChange={(e) => setUserInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
                   placeholder="Describe your situation or message..."
                   className="rounded-xl resize-none"
                   rows={3}
                 />
                 <Button
                   onClick={handleSend}
+                  disabled={loading}
                   className="rounded-xl bg-[#0073bb] hover:bg-[#005a94]"
                 >
-                  <MessageSquare className="w-5 h-5" />
+                  {loading ? "..." : <MessageSquare className="w-5 h-5" />}
                 </Button>
               </div>
             </Card>

@@ -1,8 +1,10 @@
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Avatar, AvatarFallback } from "./ui/avatar";
-import { BookOpen, MessageSquare, Heart, History, Settings, TrendingUp } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "./ui/dropdown-menu";
+import { BookOpen, MessageSquare, Heart, History, Settings, TrendingUp, LogOut } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
+import { useCognitoAuth } from "../lib/amplify";
 
 interface DashboardV2Props {
   onNavigate: (screen: string) => void;
@@ -20,6 +22,11 @@ const memoryData = [
 ];
 
 export function DashboardV2({ onNavigate, onLogout }: DashboardV2Props) {
+  const { user } = useCognitoAuth();
+  
+  const getUserInitials = (username: string) => {
+    return username.slice(0, 2).toUpperCase();
+  };
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
       {/* Header */}
@@ -33,9 +40,26 @@ export function DashboardV2({ onNavigate, onLogout }: DashboardV2Props) {
             <Button variant="ghost" size="icon" onClick={() => onNavigate("settings")}>
               <Settings className="w-5 h-5" />
             </Button>
-            <Avatar>
-              <AvatarFallback className="bg-[#0073bb] text-white">JD</AvatarFallback>
-            </Avatar>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="focus:outline-none">
+                  <Avatar className="cursor-pointer">
+                    <AvatarFallback className="bg-[#0073bb] text-white">
+                      {user ? getUserInitials(user.username) : "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="z-50">
+                <DropdownMenuItem onClick={onLogout} className="cursor-pointer">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Logout
+                </DropdownMenuItem>
+                <div className="px-2 py-1.5 text-xs text-gray-500 border-t">
+                  {user?.username || "Unknown User"}
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </div>

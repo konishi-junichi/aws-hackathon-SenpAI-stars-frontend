@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { LoginScreen } from "./LoginScreen";
 import { DashboardV2 } from "./DashboardV2";
 import { ChatInterface } from "./ChatInterface";
@@ -7,17 +7,28 @@ import { LearningMentor } from "./LearningMentor";
 import { CommunicationMentor } from "./CommunicationMentor";
 import { CounselingMentor } from "./CounselingMentor";
 import { HistoryScreen } from "./HistoryScreen";
+import { useCognitoAuth } from "../lib/amplify";
 
 type Screen = "login" | "dashboard" | "chat" | "customization" | "learning" | "communication" | "counseling" | "history" | "settings";
 
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>("login");
+  const { user, loading, signOut } = useCognitoAuth();
+
+  useEffect(() => {
+    if (user) {
+      setCurrentScreen("dashboard");
+    } else {
+      setCurrentScreen("login");
+    }
+  }, [user]);
 
   const handleLogin = () => {
     setCurrentScreen("dashboard");
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await signOut();
     setCurrentScreen("login");
   };
 
@@ -28,6 +39,17 @@ export default function App() {
   const handleBack = () => {
     setCurrentScreen("dashboard");
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-8 h-8 border-4 border-[#0073bb] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground">読み込み中...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="size-full">

@@ -50,9 +50,22 @@ export const useCognitoAuth = () => {
   }
 
   useEffect(() => {
-    const stored = localStorage.getItem('cognitoUser')
-    if (stored) setUser(JSON.parse(stored))
-    setLoading(false)
+    const checkAuth = () => {
+      try {
+        const stored = localStorage.getItem('cognitoUser')
+        if (stored) {
+          const userData = JSON.parse(stored)
+          setUser(userData)
+        }
+      } catch (error) {
+        console.error('Error checking stored auth:', error)
+        localStorage.removeItem('cognitoUser')
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    checkAuth()
   }, [])
 
   return { user, loading, signIn, signOut, getCredentials }

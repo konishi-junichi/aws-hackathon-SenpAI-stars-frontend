@@ -12,6 +12,7 @@
     "docker:export": "docker-compose run --rm build npm run export"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock-agent-runtime": "^3.0.0",
     "@aws-sdk/client-bedrock-agentcore": "^3.0.0",
     "@aws-sdk/credential-providers": "^3.0.0",
     "@radix-ui/react-accordion": "^1.2.0",
