@@ -7,16 +7,11 @@ frontend:
     build:
       commands:
         - npm run build
-        - ls -la
-        - if [ -d "out" ]; then echo "out directory exists"; else echo "out directory not found, checking .next"; ls -la .next/; fi
+        - ls -la out/
   artifacts:
-    baseDirectory: .
+    baseDirectory: out
     files:
-      - 'out/**/*'
-      - '.next/**/*'
-      - '!.next/cache/**/*'
+      - '**/*'
   cache:
     paths:
       - node_modules/**/*
-      - .next/cache/**/*
-appRoot: out
