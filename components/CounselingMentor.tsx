@@ -2,7 +2,9 @@ import { useState } from "react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
-import { ArrowLeft, Heart, BookOpen, CheckSquare } from "lucide-react";
+import { ArrowLeft, Heart, BookOpen, CheckSquare, Copy } from "lucide-react";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
 import { Checkbox } from "./ui/checkbox";
 import { useBedrockAgent } from "../lib/bedrock-agent";
@@ -34,18 +36,14 @@ const stories = [
 export function CounselingMentor({ onBack }: CounselingMentorProps) {
   const [selectedEmotion, setSelectedEmotion] = useState<string | null>(null);
   const [userMessage, setUserMessage] = useState("");
-  const [conversation, setConversation] = useState<Array<{ role: "user" | "ai"; message: string; emotion?: string }>>([
-    {
-      role: "ai",
-      message: "Hello, I'm here to listen. How are you feeling today? 💙"
-    }
-  ]);
+  const [conversation, setConversation] = useState<Array<{ role: "user" | "ai"; message: string; emotion?: string }>>([]);
   const [actionItems, setActionItems] = useState([
     { id: 1, text: "Take a 10-minute walk outside", completed: false },
     { id: 2, text: "Write down 3 things you're grateful for", completed: false },
     { id: 3, text: "Share your feelings with a trusted friend", completed: false },
   ]);
   const [loading, setLoading] = useState(false);
+  const [buttonStatus, setButtonStatus] = useState<{[key: number]: string}>({});
   const { sendMessage } = useBedrockAgent();
 
   const handleSend = async () => {
@@ -61,7 +59,7 @@ export function CounselingMentor({ onBack }: CounselingMentorProps) {
     
     try {
       const contextMessage = `Emotion: ${emotion || 'neutral'}. Message: ${message}`;
-      const response = await sendMessage(contextMessage, 'counseling-session');
+      const response = await sendMessage(contextMessage, 'counseling-session', 'advice');
       setConversation(prev => [...prev, { role: "ai", message: response }]);
     } catch (error) {
       setConversation(prev => [...prev, { role: "ai", message: "I'm here for you. Sometimes technology has hiccups, but my support for you remains constant. Please try sharing again." }]);
@@ -98,6 +96,13 @@ export function CounselingMentor({ onBack }: CounselingMentorProps) {
         </div>
       </div>
 
+      {/* Welcome Message */}
+      <div className="max-w-5xl mx-auto px-6 py-4 bg-pink-50 border-b">
+        <p className="text-sm text-[#ec4899]">
+          Hello, I'm here to listen. How are you feeling today? 💙
+        </p>
+      </div>
+
       {/* Main Content */}
       <div className="max-w-5xl mx-auto px-6 py-8">
         <div className="grid md:grid-cols-3 gap-6">
@@ -118,7 +123,54 @@ export function CounselingMentor({ onBack }: CounselingMentorProps) {
                           : "bg-pink-50 border border-pink-200"
                       }`}
                     >
-                      <p className="text-sm">{msg.message}</p>
+                      {msg.role === "ai" ? (
+                        <div>
+                          <div className="markdown-content">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {msg.message.replace(/\\n/g, '\n').replace(/^["“”&quot;]+|["“”&quot;]+$/g, '')}
+                            </ReactMarkdown>
+                          </div>
+                          <div className="flex gap-1 mt-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => {
+                                navigator.clipboard.writeText(msg.message.replace(/\\n/g, '\n').replace(/^["“”&quot;]+|["“”&quot;]+$/g, ''));
+                                setButtonStatus(prev => ({...prev, [`copy-${idx}`]: 'コピーしました'}));
+                                setTimeout(() => setButtonStatus(prev => ({...prev, [`copy-${idx}`]: ''})), 2000);
+                              }}
+                            >
+                              <Copy className="w-3 h-3 mr-1" />
+                              {buttonStatus[`copy-${idx}`] || 'コピー'}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => {
+                                setButtonStatus(prev => ({...prev, [`like-${idx}`]: '評価しました'}));
+                                setTimeout(() => setButtonStatus(prev => ({...prev, [`like-${idx}`]: ''})), 2000);
+                              }}
+                            >
+                              {buttonStatus[`like-${idx}`] ? '✓' : '👍'}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => {
+                                setButtonStatus(prev => ({...prev, [`bad-${idx}`]: '評価しました'}));
+                                setTimeout(() => setButtonStatus(prev => ({...prev, [`bad-${idx}`]: ''})), 2000);
+                              }}
+                            >
+                              {buttonStatus[`bad-${idx}`] ? '✓' : '👎'}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-sm">{msg.message}</p>
+                      )}
                     </div>
                   </div>
                 ))}

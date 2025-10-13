@@ -2,73 +2,128 @@ import { useState } from "react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
-import { ArrowLeft, Upload, Youtube, Cloud, CheckCircle2, XCircle } from "lucide-react";
-import { Progress } from "./ui/progress";
+import { Input } from "./ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
+import { ArrowLeft, Upload, Database, FileText, Link, Plus, X, CheckCircle, XCircle } from "lucide-react";
+import { BedrockAgentCoreClient, InvokeAgentRuntimeCommand } from '@aws-sdk/client-bedrock-agentcore';
+import { useCognitoAuth } from '../lib/amplify';
 
 interface LearningMentorProps {
   onBack: () => void;
 }
 
-const mockQuestions = [
-  {
-    id: 1,
-    question: "What is the primary purpose of Amazon S3?",
-    options: [
-      "Compute processing",
-      "Object storage",
-      "Database management",
-      "Network routing"
-    ],
-    correctAnswer: 1
-  },
-  {
-    id: 2,
-    question: "Which AWS service is used for serverless computing?",
-    options: [
-      "EC2",
-      "Lambda",
-      "RDS",
-      "S3"
-    ],
-    correctAnswer: 1
-  },
-  {
-    id: 3,
-    question: "What does IAM stand for in AWS?",
-    options: [
-      "Internet Access Manager",
-      "Identity and Access Management",
-      "Integrated Application Module",
-      "Infrastructure Asset Monitor"
-    ],
-    correctAnswer: 1
-  }
-];
-
 export function LearningMentor({ onBack }: LearningMentorProps) {
-  const [step, setStep] = useState<"upload" | "quiz" | "results">("upload");
-  const [answers, setAnswers] = useState<{ [key: number]: number }>({});
-  const [showResults, setShowResults] = useState(false);
+  const { getCredentials } = useCognitoAuth();
+  const [database, setDatabase] = useState<string>("");
+  const [files, setFiles] = useState<File[]>([]);
+  const [requirements, setRequirements] = useState<string>("");
+  const [urls, setUrls] = useState<string[]>([""]);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [step, setStep] = useState<'setup' | 'quiz' | 'results'>('setup');
+  const [quizData, setQuizData] = useState<any>(null);
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+  const [userAnswers, setUserAnswers] = useState<string[]>([]);
 
-  const handleFileUpload = () => {
-    setStep("quiz");
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(event.target.files || []);
+    setFiles(prev => [...prev, ...selectedFiles]);
   };
 
-  const handleSubmitQuiz = () => {
-    setShowResults(true);
-    setStep("results");
+  const removeFile = (index: number) => {
+    setFiles(prev => prev.filter((_, i) => i !== index));
   };
 
-  const score = Object.keys(answers).filter(
-    (key) => answers[parseInt(key)] === mockQuestions[parseInt(key) - 1].correctAnswer
-  ).length;
+  const addUrlField = () => {
+    setUrls(prev => [...prev, ""]);
+  };
+
+  const removeUrlField = (index: number) => {
+    setUrls(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const updateUrl = (index: number, value: string) => {
+    setUrls(prev => prev.map((url, i) => i === index ? value : url));
+  };
+
+  const handleGenerateQuiz = async () => {
+    if (!requirements.trim()) {
+      alert('Please enter quiz generation requirements');
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const credentials = await getCredentials();
+      
+      const client = new BedrockAgentCoreClient({
+        region: process.env.NEXT_PUBLIC_AWS_BEDROCK_REGION || process.env.NEXT_PUBLIC_AWS_REGION,
+        credentials
+      });
+
+      const command = new InvokeAgentRuntimeCommand({
+        runtimeSessionId: 'training-session-' + Date.now().toString().padEnd(33, '0'),
+        agentRuntimeArn: process.env.NEXT_PUBLIC_TRAINING_AGENT_ARN,
+        qualifier: 'DEFAULT',
+        payload: new TextEncoder().encode(JSON.stringify({ prompt: requirements }))
+      });
+
+      const response = await client.send(command);
+      const textResponse = await response.response?.transformToString();
+      
+      // JSONが文字列として返される場合の処理
+      let parsedData;
+      try {
+        // まず直接パース
+        parsedData = JSON.parse(textResponse || '{}');
+        // もしstringの場合は再度パース
+        if (typeof parsedData === 'string') {
+          parsedData = JSON.parse(parsedData);
+        }
+      } catch (e) {
+        console.error('JSON parse error:', e);
+        parsedData = {};
+      }
+      
+      console.log('Final parsed data:', parsedData);
+      setQuizData(parsedData);
+      setCurrentQuestion(0);
+      setUserAnswers([]);
+      setStep('quiz');
+    } catch (error) {
+      console.error('Quiz generation error:', error);
+      alert('Failed to generate quiz');
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleAnswerSelect = (answer: string) => {
+    const newAnswers = [...userAnswers];
+    newAnswers[currentQuestion] = answer;
+    setUserAnswers(newAnswers);
+  };
+
+  const handleNext = () => {
+    if (quizData?.questions && currentQuestion < quizData.questions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1);
+    } else {
+      setStep('results');
+    }
+  };
+
+  const handleRestart = () => {
+    setStep('setup');
+    setQuizData(null);
+    setCurrentQuestion(0);
+    setUserAnswers([]);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-blue-50">
       {/* Header */}
       <div className="bg-white border-b border-border">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={onBack}>
+        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={step === 'setup' ? onBack : handleRestart}>
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <h2 className="text-[#16a34a]">Learning Mentor</h2>
@@ -76,199 +131,239 @@ export function LearningMentor({ onBack }: LearningMentorProps) {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-6 py-8">
-        {step === "upload" && (
-          <div className="space-y-6">
+      <div className="max-w-4xl mx-auto px-6 py-8">
+        {step === 'setup' ? (
+          <div className="space-y-8">
             <div>
-              <h1>Upload Learning Materials</h1>
+              <h1>Quiz Generation</h1>
               <p className="text-muted-foreground mt-1">
-                Upload documents or provide links to generate quiz questions
+                Configure the following settings to generate a customized quiz
               </p>
             </div>
 
-            <Card className="p-8 rounded-3xl shadow-md">
-              <div className="border-2 border-dashed border-border rounded-2xl p-12 text-center hover:border-[#16a34a] transition-colors cursor-pointer">
-                <Upload className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="mb-2">Drop files here or click to upload</h3>
-                <p className="text-muted-foreground text-sm">
-                  Supports PDF, DOCX, TXT files
-                </p>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* 1. Database Selection - Left */}
+            <Card className="p-4 rounded-2xl shadow-sm">
+              <div className="flex items-center gap-2 mb-3">
+                <Database className="w-5 h-5 text-[#0073bb]" />
+                <h3 className="text-sm font-medium">Internal Learning Database</h3>
               </div>
+              <Select value={database} onValueChange={setDatabase}>
+                <SelectTrigger className="rounded-xl">
+                  <SelectValue placeholder="Select Database" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="nothing">Nothing</SelectItem>
+                  <SelectItem value="aws">AWS Knowledge</SelectItem>
+                  <SelectItem value="it">IT Knowledge</SelectItem>
+                </SelectContent>
+              </Select>
             </Card>
 
-            <div className="grid md:grid-cols-2 gap-6">
-              <Card className="p-6 rounded-2xl shadow-sm">
-                <Youtube className="w-8 h-8 text-[#ff0000] mb-3" />
-                <h3 className="mb-2">YouTube URL</h3>
-                <Textarea
-                  placeholder="Paste YouTube video URL..."
-                  className="rounded-xl mb-3"
-                />
-                <Button className="w-full rounded-xl bg-[#16a34a] hover:bg-[#15803d]">
-                  Import from YouTube
-                </Button>
-              </Card>
-
-              <Card className="p-6 rounded-2xl shadow-sm">
-                <Cloud className="w-8 h-8 text-[#0073bb] mb-3" />
-                <h3 className="mb-2">Cloud Storage</h3>
-                <Textarea
-                  placeholder="OneDrive or SharePoint URL..."
-                  className="rounded-xl mb-3"
-                />
-                <Button className="w-full rounded-xl bg-[#16a34a] hover:bg-[#15803d]">
-                  Import from Cloud
-                </Button>
-              </Card>
-            </div>
-
-            <div className="flex justify-end">
-              <Button
-                onClick={handleFileUpload}
-                className="rounded-xl bg-[#16a34a] hover:bg-[#15803d]"
-              >
-                Generate Questions
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {step === "quiz" && (
-          <div className="space-y-6">
-            <div>
-              <h1>Quiz Time!</h1>
-              <p className="text-muted-foreground mt-1">
-                Answer the following questions generated from your materials
-              </p>
-            </div>
-
-            <Progress value={(Object.keys(answers).length / mockQuestions.length) * 100} className="h-2" />
-
-            <div className="space-y-4">
-              {mockQuestions.map((q, idx) => (
-                <Card key={q.id} className="p-6 rounded-2xl shadow-sm">
-                  <h4 className="mb-4">
-                    Question {idx + 1}: {q.question}
-                  </h4>
-                  <div className="space-y-2">
-                    {q.options.map((option, optIdx) => (
-                      <button
-                        key={optIdx}
-                        onClick={() => setAnswers({ ...answers, [q.id]: optIdx })}
-                        className={`w-full p-4 rounded-xl border-2 text-left transition-all ${
-                          answers[q.id] === optIdx
-                            ? "border-[#16a34a] bg-green-50"
-                            : "border-border hover:border-muted-foreground"
-                        }`}
-                      >
-                        {option}
-                      </button>
-                    ))}
+            {/* 2. File Upload & Requirements - Right */}
+            <Card className="lg:col-span-2 p-4 rounded-2xl shadow-sm">
+              <div className="space-y-4">
+                {/* Requirements Input */}
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <FileText className="w-5 h-5 text-[#ea580c]" />
+                    <h3 className="text-sm font-medium">Quiz Generation Requirements</h3>
                   </div>
-                </Card>
-              ))}
-            </div>
-
-            <div className="flex justify-end">
-              <Button
-                onClick={handleSubmitQuiz}
-                disabled={Object.keys(answers).length !== mockQuestions.length}
-                className="rounded-xl bg-[#16a34a] hover:bg-[#15803d]"
-              >
-                Submit Quiz
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {step === "results" && (
-          <div className="space-y-6">
-            <div>
-              <h1>Quiz Results</h1>
-              <p className="text-muted-foreground mt-1">
-                Great work! Here's how you did
-              </p>
-            </div>
-
-            <Card className="p-8 rounded-3xl shadow-md bg-gradient-to-br from-green-50 to-white">
-              <div className="text-center">
-                <div className="text-6xl mb-4">
-                  {score === mockQuestions.length ? "🎉" : score >= 2 ? "👍" : "💪"}
+                  <Textarea
+                    value={requirements}
+                    onChange={(e) => setRequirements(e.target.value)}
+                    placeholder="Describe what kind of quiz you want to generate...&#10;Example: 5 multiple choice questions about AWS S3 basic features"
+                    className="rounded-xl min-h-[120px] resize-none text-sm"
+                  />
                 </div>
-                <h1 className="text-[#16a34a] mb-2">
-                  {score}/{mockQuestions.length}
-                </h1>
-                <p className="text-muted-foreground">
-                  You got {Math.round((score / mockQuestions.length) * 100)}% correct!
-                </p>
+
+                {/* File Upload - Compact */}
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <FileText className="w-4 h-4 text-[#16a34a]" />
+                    <h3 className="text-sm font-medium">File Upload</h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <label className="cursor-pointer flex items-center gap-2 px-3 py-2 border-2 border-dashed border-border rounded-lg hover:border-[#16a34a] transition-colors">
+                      <input
+                        type="file"
+                        multiple
+                        accept=".pdf,.html,.txt"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                      <Plus className="w-4 h-4 text-[#16a34a]" />
+                      <span className="text-xs font-medium text-[#16a34a]">
+                        Select Files
+                      </span>
+                    </label>
+                    <span className="text-xs text-muted-foreground">PDF, HTML, TXT</span>
+                  </div>
+                  {files.length > 0 && (
+                    <div className="space-y-1 mt-2">
+                      {files.map((file, index) => (
+                        <div key={index} className="flex items-center justify-between p-2 bg-green-50 rounded-lg border border-green-200">
+                          <span className="text-xs font-medium truncate">{file.name}</span>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeFile(index)}
+                            className="h-5 w-5 p-0 hover:bg-red-100"
+                          >
+                            <X className="w-3 h-3 text-red-500" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </Card>
+          </div>
 
+          {/* 3. URL Links - Compact */}
+          <Card className="p-4 rounded-2xl shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <Link className="w-4 h-4 text-[#0073bb]" />
+              <h3 className="text-sm font-medium">Reference URLs</h3>
+            </div>
+            
+            <div className="space-y-2">
+              {urls.map((url, index) => (
+                <div key={index} className="flex gap-2">
+                  <Input
+                    value={url}
+                    onChange={(e) => updateUrl(index, e.target.value)}
+                    placeholder="https://example.com"
+                    className="rounded-lg flex-1 text-sm h-8"
+                  />
+                  {urls.length > 1 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removeUrlField(index)}
+                      className="rounded-lg h-8 w-8 p-0"
+                    >
+                      <X className="w-3 h-3" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+              
+              <Button
+                variant="outline"
+                onClick={addUrlField}
+                className="rounded-lg w-full border-dashed h-8 text-sm"
+              >
+                <Plus className="w-3 h-3 mr-1" />
+                Add URL
+              </Button>
+            </div>
+          </Card>
+
+          {/* Generate Button */}
+          <div className="flex justify-center pt-6">
+            <Button
+              onClick={handleGenerateQuiz}
+              disabled={isGenerating}
+              className="rounded-xl bg-[#16a34a] hover:bg-[#15803d] px-8 py-3 text-lg"
+              size="lg"
+            >
+              {isGenerating ? 'Generating...' : 'Generate Quiz'}
+            </Button>
+          </div>
+        </div>
+        ) : step === 'results' ? (
+          <div className="space-y-6">
+            <h1>Results</h1>
+            <Card className="p-8 rounded-2xl text-center">
+              <div className="text-6xl mb-4">
+                {userAnswers.filter((answer, i) => answer === quizData?.answers?.[i]).length === quizData?.questions?.length ? '🎉' : '💪'}
+              </div>
+              <h1 className="text-4xl font-bold text-[#16a34a] mb-2">
+                {Math.round((userAnswers.filter((answer, i) => answer === quizData?.answers?.[i]).length / (quizData?.questions?.length || 1)) * 100)}%
+              </h1>
+              <p className="text-lg mb-6">
+                {userAnswers.filter((answer, i) => answer === quizData?.answers?.[i]).length}/{quizData?.questions?.length || 0} Correct
+              </p>
+            </Card>
+            
             <div className="space-y-4">
-              {mockQuestions.map((q, idx) => {
-                const userAnswer = answers[q.id];
-                const isCorrect = userAnswer === q.correctAnswer;
-                
+              {quizData?.questions?.map((question: string, i: number) => {
+                const isCorrect = userAnswers[i] === quizData?.answers?.[i];
                 return (
-                  <Card key={q.id} className="p-6 rounded-2xl shadow-sm">
-                    <div className="flex items-start gap-4">
-                      {isCorrect ? (
-                        <CheckCircle2 className="w-6 h-6 text-[#16a34a] flex-shrink-0 mt-1" />
-                      ) : (
-                        <XCircle className="w-6 h-6 text-destructive flex-shrink-0 mt-1" />
-                      )}
+                  <Card key={i} className={`p-4 rounded-xl border-2 ${
+                    isCorrect ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'
+                  }`}>
+                    <div className="flex items-start gap-3">
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-white text-sm font-bold ${
+                        isCorrect ? 'bg-green-500' : 'bg-red-500'
+                      }`}>
+                        {isCorrect ? '✓' : '×'}
+                      </div>
                       <div className="flex-1">
-                        <h4 className="mb-2">{q.question}</h4>
-                        <p className="text-sm text-muted-foreground mb-2">
-                          Your answer: {q.options[userAnswer]}
-                        </p>
+                        <h3 className="mb-2 font-medium">Question {i + 1}: {question}</h3>
+                        <p className="text-sm mb-1">Your Answer: <span className={isCorrect ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>{userAnswers[i] || 'No Answer'}</span></p>
                         {!isCorrect && (
-                          <p className="text-sm text-[#16a34a]">
-                            Correct answer: {q.options[q.correctAnswer]}
-                          </p>
+                          <p className="text-sm mb-2 text-green-600 font-medium">Correct Answer: {quizData?.answers?.[i]}</p>
                         )}
+                        <p className="text-sm text-muted-foreground">{quizData?.explanations?.[i]}</p>
                       </div>
                     </div>
                   </Card>
                 );
               })}
             </div>
-
-            {score < mockQuestions.length && (
-              <Card className="p-6 rounded-2xl shadow-sm bg-blue-50 border-[#0073bb]">
-                <h4 className="mb-2 text-[#0073bb]">💡 Re-test Suggestion</h4>
-                <p className="text-sm mb-4">
-                  To improve retention, we recommend retaking this quiz in 3 days.
-                </p>
-                <Button className="rounded-xl bg-[#0073bb] hover:bg-[#005a94]">
-                  Schedule Re-test
-                </Button>
-              </Card>
-            )}
-
-            <div className="flex gap-4">
-              <Button
-                onClick={() => {
-                  setStep("upload");
-                  setAnswers({});
-                  setShowResults(false);
-                }}
-                variant="outline"
-                className="rounded-xl flex-1"
-              >
-                New Quiz
+            
+            <div className="flex gap-4 justify-center">
+              <Button onClick={handleRestart} className="rounded-xl bg-[#16a34a] hover:bg-[#15803d]">
+                Create New Quiz
               </Button>
-              <Button
-                onClick={() => {
-                  setAnswers({});
-                  setStep("quiz");
-                  setShowResults(false);
-                }}
-                className="rounded-xl flex-1 bg-[#16a34a] hover:bg-[#15803d]"
-              >
-                Retry Quiz
+              <Button onClick={onBack} variant="outline" className="rounded-xl">
+                Exit
               </Button>
             </div>
+          </div>
+        ) : step === 'quiz' && quizData && quizData.questions ? (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h1>Question {currentQuestion + 1}/{quizData.questions.length}</h1>
+              <div className="text-sm text-muted-foreground">
+                Progress: {Math.round(((currentQuestion + 1) / quizData.questions.length) * 100)}%
+              </div>
+            </div>
+            <Card className="p-6 rounded-2xl">
+              <h2 className="mb-6">{quizData.questions[currentQuestion]}</h2>
+              <div className="space-y-3">
+                {quizData.selects && quizData.selects[currentQuestion] && Object.entries(quizData.selects[currentQuestion]).map(([key, value]) => (
+                  <button
+                    key={key}
+                    onClick={() => handleAnswerSelect(key)}
+                    className={`w-full p-4 text-left rounded-xl border-2 transition-all ${
+                      userAnswers[currentQuestion] === key
+                        ? 'border-[#16a34a] bg-green-50'
+                        : 'border-border hover:border-muted-foreground'
+                    }`}
+                  >
+                    {key}. {value as string}
+                  </button>
+                ))}
+              </div>
+              <div className="flex justify-end mt-6">
+                <Button
+                  onClick={handleNext}
+                  disabled={!userAnswers[currentQuestion]}
+                  className="rounded-xl bg-[#16a34a] hover:bg-[#15803d]"
+                >
+                  {currentQuestion < quizData.questions.length - 1 ? 'Next' : 'View Results'}
+                </Button>
+              </div>
+            </Card>
+          </div>
+        ) : (
+          <div className="text-center py-8">
+            <p>Loading quiz data...</p>
+            <pre className="mt-4 text-xs text-left">{JSON.stringify(quizData, null, 2)}</pre>
           </div>
         )}
       </div>

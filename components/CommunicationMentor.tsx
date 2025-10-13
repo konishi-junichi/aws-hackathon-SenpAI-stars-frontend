@@ -2,9 +2,11 @@ import { useState } from "react";
 import { Card } from "./ui/card";
 import { Button } from "./ui/button";
 import { Textarea } from "./ui/textarea";
-import { ArrowLeft, MessageSquare, Lightbulb } from "lucide-react";
+import { ArrowLeft, MessageSquare, Lightbulb, Copy } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 import { useBedrockAgent } from "../lib/bedrock-agent";
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 interface CommunicationMentorProps {
   onBack: () => void;
@@ -19,14 +21,10 @@ const frameworks = [
 export function CommunicationMentor({ onBack }: CommunicationMentorProps) {
   const [role, setRole] = useState("client");
   const [userInput, setUserInput] = useState("");
-  const [conversation, setConversation] = useState<Array<{ role: "user" | "ai"; message: string }>>([
-    {
-      role: "ai",
-      message: "Hello! I'm your Communication Mentor. Let's work on structuring your thoughts clearly. Start by describing a situation or topic you need to communicate about."
-    }
-  ]);
+  const [conversation, setConversation] = useState<Array<{ role: "user" | "ai"; message: string }>>([]);
   const [showFeedback, setShowFeedback] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [buttonStatus, setButtonStatus] = useState<{[key: number]: string}>({});
   const { sendMessage } = useBedrockAgent();
 
   const handleSend = async () => {
@@ -63,6 +61,13 @@ export function CommunicationMentor({ onBack }: CommunicationMentorProps) {
           </Button>
           <h2 className="text-[#0073bb]">Communication Mentor</h2>
         </div>
+      </div>
+
+      {/* Welcome Message */}
+      <div className="max-w-6xl mx-auto px-6 py-4 bg-blue-50 border-b">
+        <p className="text-sm text-[#0073bb]">
+          Hello! I'm your Communication Mentor. Let's work on structuring your thoughts clearly. Start by describing a situation or topic you need to communicate about.
+        </p>
       </div>
 
       {/* Main Content */}
@@ -119,7 +124,54 @@ export function CommunicationMentor({ onBack }: CommunicationMentorProps) {
                           : "bg-muted"
                       }`}
                     >
-                      <p className="text-sm">{msg.message}</p>
+                      {msg.role === "ai" ? (
+                        <div>
+                          <div className="markdown-content">
+                            <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                              {msg.message.replace(/\\n/g, '\n').replace(/^["“”&quot;]+|["“”&quot;]+$/g, '')}
+                            </ReactMarkdown>
+                          </div>
+                          <div className="flex gap-1 mt-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => {
+                                navigator.clipboard.writeText(msg.message.replace(/\\n/g, '\n').replace(/^["“”&quot;]+|["“”&quot;]+$/g, ''));
+                                setButtonStatus(prev => ({...prev, [`copy-${idx}`]: 'コピーしました'}));
+                                setTimeout(() => setButtonStatus(prev => ({...prev, [`copy-${idx}`]: ''})), 2000);
+                              }}
+                            >
+                              <Copy className="w-3 h-3 mr-1" />
+                              {buttonStatus[`copy-${idx}`] || 'コピー'}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => {
+                                setButtonStatus(prev => ({...prev, [`like-${idx}`]: '評価しました'}));
+                                setTimeout(() => setButtonStatus(prev => ({...prev, [`like-${idx}`]: ''})), 2000);
+                              }}
+                            >
+                              {buttonStatus[`like-${idx}`] ? '✓' : '👍'}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 px-2 text-xs"
+                              onClick={() => {
+                                setButtonStatus(prev => ({...prev, [`bad-${idx}`]: '評価しました'}));
+                                setTimeout(() => setButtonStatus(prev => ({...prev, [`bad-${idx}`]: ''})), 2000);
+                              }}
+                            >
+                              {buttonStatus[`bad-${idx}`] ? '✓' : '👎'}
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-sm">{msg.message}</p>
+                      )}
                     </div>
                   </div>
                 ))}

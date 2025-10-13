@@ -4,7 +4,7 @@ import { useCognitoAuth } from './amplify'
 export const useBedrockAgent = () => {
   const { getCredentials } = useCognitoAuth()
 
-  const sendMessage = async (message: string, sessionId: string = 'default-session-12345678901234567890123456789012345') => {
+  const sendMessage = async (message: string, sessionId: string = 'default-session-12345678901234567890123456789012345', agentType: string = 'communication') => {
     try {
       const credentials = await getCredentials()
       
@@ -15,7 +15,7 @@ export const useBedrockAgent = () => {
 
       const command = new InvokeAgentRuntimeCommand({
         runtimeSessionId: sessionId.padEnd(33, '0'),
-        agentRuntimeArn: process.env.NEXT_PUBLIC_BEDROCK_AGENT_ARN,
+        agentRuntimeArn: agentType === 'advice' ? process.env.NEXT_PUBLIC_ADVICE_AGENT_ARN : process.env.NEXT_PUBLIC_COMMUNICATION_AGENT_ARN,
         qualifier: 'DEFAULT',
         payload: new TextEncoder().encode(JSON.stringify({ prompt: message }))
       })
