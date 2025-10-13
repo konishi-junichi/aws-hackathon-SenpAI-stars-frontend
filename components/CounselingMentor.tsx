@@ -43,7 +43,7 @@ export function CounselingMentor({ onBack }: CounselingMentorProps) {
     { id: 3, text: "Share your feelings with a trusted friend", completed: false },
   ]);
   const [loading, setLoading] = useState(false);
-  const [buttonStatus, setButtonStatus] = useState<{[key: number]: string}>({});
+  const [buttonStatus, setButtonStatus] = useState<{[key: string]: string}>({});
   const { sendMessage } = useBedrockAgent();
 
   const handleSend = async () => {
