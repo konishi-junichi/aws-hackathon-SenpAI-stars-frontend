@@ -143,7 +143,7 @@ export function CommunicationMentor({ onBack }: CommunicationMentorProps) {
                               }}
                             >
                               <Copy className="w-3 h-3 mr-1" />
-                              {buttonStatus[`copy-${idx}` as string] || 'コピー'}
+                              {(() => { const key = `copy-${idx}`; return buttonStatus[key] || 'コピー'; })()}
                             </Button>
                             <Button
                               variant="ghost"
@@ -154,7 +154,7 @@ export function CommunicationMentor({ onBack }: CommunicationMentorProps) {
                                 setTimeout(() => setButtonStatus(prev => ({...prev, [`like-${idx}`]: ''})), 2000);
                               }}
                             >
-                              {buttonStatus[`like-${idx}` as string] ? '✓' : '👍'}
+                              {(() => { const key = `like-${idx}`; return buttonStatus[key] ? '✓' : '👍'; })()}
                             </Button>
                             <Button
                               variant="ghost"
@@ -165,7 +165,7 @@ export function CommunicationMentor({ onBack }: CommunicationMentorProps) {
                                 setTimeout(() => setButtonStatus(prev => ({...prev, [`bad-${idx}`]: ''})), 2000);
                               }}
                             >
-                              {buttonStatus[`bad-${idx}` as string] ? '✓' : '👎'}
+                              {(() => { const key = `bad-${idx}`; return buttonStatus[key] ? '✓' : '👎'; })()}
                             </Button>
                           </div>
                         </div>
