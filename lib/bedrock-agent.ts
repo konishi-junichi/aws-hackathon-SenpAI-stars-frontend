@@ -15,7 +15,7 @@ export const useBedrockAgent = () => {
 
       const command = new InvokeAgentRuntimeCommand({
         runtimeSessionId: sessionId.padEnd(33, '0'),
-        agentRuntimeArn: process.env.NEXT_PUBLIC_BEDROCK_AGENT_ARN,
+        agentRuntimeArn: process.env.NEXT_PUBLIC_COMMUNICATION_AGENT_ARN,
         qualifier: 'DEFAULT',
         payload: new TextEncoder().encode(JSON.stringify({ prompt: message }))
       })

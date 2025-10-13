@@ -108,7 +108,7 @@ export default function ChatApp() {
       
       const input = {
         runtimeSessionId: `session-${conversationId}-${Date.now()}`,
-        agentRuntimeArn: process.env.NEXT_PUBLIC_BEDROCK_AGENT_ARN || '',
+        agentRuntimeArn: process.env.NEXT_PUBLIC_COMMUNICATION_AGENT_ARN || '',
         qualifier: 'DEFAULT',
         payload: new TextEncoder().encode(JSON.stringify({ prompt: message }))
       }
