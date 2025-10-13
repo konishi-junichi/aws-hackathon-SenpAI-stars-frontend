@@ -24,7 +24,7 @@ export function CommunicationMentor({ onBack }: CommunicationMentorProps) {
   const [conversation, setConversation] = useState<Array<{ role: "user" | "ai"; message: string }>>([]);
   const [showFeedback, setShowFeedback] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [buttonStatus, setButtonStatus] = useState<{[key: number]: string}>({});
+  const [buttonStatus, setButtonStatus] = useState<{[key: string]: string}>({});
   const { sendMessage } = useBedrockAgent();
 
   const handleSend = async () => {
