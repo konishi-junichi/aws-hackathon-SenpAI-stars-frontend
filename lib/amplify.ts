@@ -2,16 +2,21 @@ import { useState, useEffect } from 'react'
 import { CognitoUserPool, CognitoUser, AuthenticationDetails } from 'amazon-cognito-identity-js'
 import { fromCognitoIdentityPool } from '@aws-sdk/credential-providers'
 
-const userPool = new CognitoUserPool({
-  UserPoolId: process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID!,
-  ClientId: process.env.NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID!
-})
+const userPool = typeof window !== 'undefined' && process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID && process.env.NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID 
+  ? new CognitoUserPool({
+      UserPoolId: process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID,
+      ClientId: process.env.NEXT_PUBLIC_COGNITO_USER_POOL_CLIENT_ID
+    })
+  : null
 
 export const useCognitoAuth = () => {
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   const signIn = async (username: string, password: string) => {
+    if (!userPool) {
+      throw new Error('Cognito User Pool not initialized')
+    }
     return new Promise((resolve, reject) => {
       const cognitoUser = new CognitoUser({ Username: username, Pool: userPool })
       const authDetails = new AuthenticationDetails({ Username: username, Password: password })
@@ -40,12 +45,15 @@ export const useCognitoAuth = () => {
   const getCredentials = () => {
     const token = user?.idToken || user?.token
     if (!token) throw new Error('No authentication token')
+    if (!process.env.NEXT_PUBLIC_COGNITO_IDENTITY_POOL_ID || !process.env.NEXT_PUBLIC_AWS_REGION || !process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID) {
+      throw new Error('Missing Cognito configuration')
+    }
     return fromCognitoIdentityPool({
-      identityPoolId: process.env.NEXT_PUBLIC_COGNITO_IDENTITY_POOL_ID!,
+      identityPoolId: process.env.NEXT_PUBLIC_COGNITO_IDENTITY_POOL_ID,
       logins: {
         [`cognito-idp.${process.env.NEXT_PUBLIC_AWS_REGION}.amazonaws.com/${process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID}`]: token
       },
-      clientConfig: { region: process.env.NEXT_PUBLIC_AWS_REGION! }
+      clientConfig: { region: process.env.NEXT_PUBLIC_AWS_REGION }
     })
   }
 
