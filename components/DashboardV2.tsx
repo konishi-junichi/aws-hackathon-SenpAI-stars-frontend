@@ -67,7 +67,7 @@ export function DashboardV2({ onNavigate, onLogout }: DashboardV2Props) {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-6 py-8">
         <div className="mb-8">
-          <h1>Welcome back, John!</h1>
+          <h1>Welcome back, {user?.username || "User"}!</h1>
           <p className="text-muted-foreground mt-1">Continue your learning journey with your AI mentors</p>
         </div>
 
