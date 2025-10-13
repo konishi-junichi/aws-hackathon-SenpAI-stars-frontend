@@ -142,7 +142,7 @@ export function CounselingMentor({ onBack }: CounselingMentorProps) {
                               }}
                             >
                               <Copy className="w-3 h-3 mr-1" />
-                              {buttonStatus[`copy-${idx}`] || 'コピー'}
+                              {buttonStatus[`copy-${idx}` as string] || 'コピー'}
                             </Button>
                             <Button
                               variant="ghost"
@@ -153,7 +153,7 @@ export function CounselingMentor({ onBack }: CounselingMentorProps) {
                                 setTimeout(() => setButtonStatus(prev => ({...prev, [`like-${idx}`]: ''})), 2000);
                               }}
                             >
-                              {buttonStatus[`like-${idx}`] ? '✓' : '👍'}
+                              {buttonStatus[`like-${idx}` as string] ? '✓' : '👍'}
                             </Button>
                             <Button
                               variant="ghost"
@@ -164,7 +164,7 @@ export function CounselingMentor({ onBack }: CounselingMentorProps) {
                                 setTimeout(() => setButtonStatus(prev => ({...prev, [`bad-${idx}`]: ''})), 2000);
                               }}
                             >
-                              {buttonStatus[`bad-${idx}`] ? '✓' : '👎'}
+                              {buttonStatus[`bad-${idx}` as string] ? '✓' : '👎'}
                             </Button>
                           </div>
                         </div>
