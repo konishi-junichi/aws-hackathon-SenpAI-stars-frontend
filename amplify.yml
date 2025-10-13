@@ -8,6 +8,9 @@ frontend:
       commands:
         - npm run build
         - echo '{"version":1,"files":[],"ignore":[]}' > out/required-server-files.json
+        - mkdir -p out/.next/server/pages
+        - echo '{}' > out/.next/server/pages-manifest.json
+        - echo '{}' > out/.next/server/middleware-manifest.json
   artifacts:
     baseDirectory: out
     files:
