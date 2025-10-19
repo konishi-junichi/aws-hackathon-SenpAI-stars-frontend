@@ -154,8 +154,19 @@ export function LearningMentor({ onBack }: LearningMentorProps) {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="nothing">Nothing</SelectItem>
-                  <SelectItem value="aws">AWS Knowledge</SelectItem>
-                  <SelectItem value="it">IT Knowledge</SelectItem>
+                  <SelectItem value="business-writing">Business Writing</SelectItem>
+                  <SelectItem value="logical-thinking">Logical Thinking</SelectItem>
+                  <SelectItem value="meeting-skills">Meeting Skills</SelectItem>
+                  <SelectItem value="project-management">Project Management</SelectItem>
+                  <SelectItem value="task-management">Task Management</SelectItem>
+                  <SelectItem value="ms-office-skills">MS Office Skills</SelectItem>
+                  <SelectItem value="si-basic">SI Basic</SelectItem>
+                  <SelectItem value="ai-literacy">AI Literacy</SelectItem>
+                  <SelectItem value="data-visualization-basics">Data & Visualization Basics</SelectItem>
+                  <SelectItem value="ai-business-application">AI Business Application</SelectItem>
+                  <SelectItem value="prompt-engineering">Prompt Engineering for Consultants</SelectItem>
+                  <SelectItem value="ai-problem-solving">AI × Problem Solving</SelectItem>
+                  <SelectItem value="ai-collaboration-ethics">AI Collaboration & Ethics</SelectItem>
                 </SelectContent>
               </Select>
             </Card>
